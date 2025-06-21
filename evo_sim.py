@@ -116,13 +116,14 @@ class Organism:
             for i in range(len(parts_val)):
                 if parts_val[i] == STEM or parts_val[i] == TRUNK:
                     stems.append(parts_keys[i])
-            x, y = random.choice(stems)
-            if grid[x][y].organ == STEM:
-                nx, ny = self.find_empty_adjacent(grid, x, y)
-            else:
-                nx, ny = self.find_empty_adjacent(grid, x, y,2)
-            if nx is not None:
-                self.new_organ(nx, ny, random.choice([ROOT,ROOT,STEM,STEM,STEM,TRUNK,TRUNK,LEAF,LEAF,FLOWER]))
+            if stems:
+                x, y = random.choice(stems)
+                if grid[x][y].organ == STEM:
+                    nx, ny = self.find_empty_adjacent(grid, x, y)
+                else:
+                    nx, ny = self.find_empty_adjacent(grid, x, y,2)
+                if nx is not None:
+                    self.new_organ(nx, ny, random.choice([ROOT,ROOT,STEM,STEM,STEM,TRUNK,TRUNK,LEAF,LEAF,FLOWER]))
 
     def find_empty_adjacent(self, grid, x, y, dist=1):
         adjacents=[]
