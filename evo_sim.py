@@ -38,7 +38,7 @@ COLORS = {
 # }
 
 class Brain(nn.Module):
-    def __init__(self, input_size=16, hidden_size=16, output_size=len(COLORS.keys())-1):
+    def __init__(self, input_size=16, hidden_size=64, output_size=len(COLORS.keys())-1):
         super(Brain, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(input_size, hidden_size),
@@ -60,7 +60,7 @@ class Cell:
 
 # 개체 (유기체)
 class Organism:
-    def __init__(self, x, y, energy=300, brain=None):
+    def __init__(self, x, y, energy=300, brain=None,lw=50,rs=50,st=50,ls=20):
         # 상태
         self.parts = {(x, y): SEED}
         self.root_pos = (x,y)
@@ -73,10 +73,10 @@ class Organism:
         grid[x][y].organ = SEED
 
         # 특성
-        self.leaf_width = 50 # 광합성 양 <-> 물 소모량
-        self.root_strength = 50 # 물 흡수량 <-> 에너지 소모량
-        self.stem_thickness = 50 # 물, 에너지 저장량 <-> 기관 생성에 소모되는 에너지량
-        self.lifespan = 10
+        self.leaf_width = lw # 광합성 양 <-> 물 소모량
+        self.root_strength = rs # 물 흡수량 <-> 에너지 소모량
+        self.stem_thickness = st # 물, 에너지 저장량 <-> 기관 생성에 소모되는 에너지량
+        self.lifespan = ls
 
 
     def get_state(self):
@@ -110,17 +110,26 @@ class Organism:
         return actions[torch.multinomial(action_probs, 1).item()]
 
     def mutate(self):
+        self.leaf_width += random.randint(-3,3)
+        self.root_strength += random.randint(-3, 3)
+        self.stem_thickness += random.randint(-3, 3)
+        self.lifespan += random.randint(-3, 3)
+        if self.leaf_width < 10: self.leaf_width = 10
+        if self.root_strength < 10: self.root_strength = 10
+        if self.stem_thickness < 10: self.stem_thickness = 10
+        if self.lifespan < 10: self.lifespan = 10
         with torch.no_grad():
             for param in self.brain.parameters():
                 if not self.reproduce:
-                    mutation = torch.rand_like(param) * random.randint(-(3000-self.age*5),3000-self.age*5) * 0.0001
+                    mutation = torch.rand_like(param) * random.randint(-(3000-self.age*5),3000-self.age*5) * 0.00005
                 else:
-                    mutation = torch.rand_like(param) * random.randint(-(2200-self.age*4),2200-self.age*4) * 0.0001
+                    mutation = torch.rand_like(param) * random.randint(-(2200-self.age*4),2200-self.age*4) * 0.00005
                 param.add_(mutation)
 
     def new_organ(self,x,y,organ,cost=None):
         if cost is None:
             cost=self.stem_thickness
+        self.age-=3
         self.parts[(x, y)] = organ
         grid[x][y].organ = organ
         self.energy -= cost
@@ -136,25 +145,27 @@ class Organism:
         # 노화
         self.age += 1
         if self.age >= self.lifespan*10:
-            self.mutate()
-            x, y = random.choice(list(self.parts.keys()))
-            new_organism(x,y,self.energy,self.brain)
+            if random.random() < 0.9 and len(self.parts)>1:
+                x, y = random.choice(list(self.parts.keys()))
+                new_organism(x,y,self.energy,self.brain,self.leaf_width,self.root_strength,self.stem_thickness,self.lifespan)
             self.death()
             return False
 
         # 생존 조건
         if self.water <= 0 or self.energy <= 0:
-            if random.random() < 0.6 or (self.reproduce and random.random() < 0.25):
-                self.mutate()
+            if random.random() < 0.6 and len(self.parts)>1:
                 x, y = random.choice(list(self.parts.keys()))
-                new_organism(x,y,300,self.brain)
+                new_organism(x,y,300,self.brain,self.leaf_width,self.root_strength,self.stem_thickness,self.lifespan)
             self.death()
             return False
 
         return True
 
     def photosynthesis(self,x,y):
-        self.energy+=grid[x][y].light * self.leaf_width * 0.1
+        if grid[x][y].organ == LEAF:
+            self.energy+=grid[x][y].light * self.leaf_width * 0.1
+        else:
+            self.energy+=grid[x][y].light * 0.5
 
     def death(self):
         for (x, y) in list(self.parts.keys()):
@@ -173,6 +184,14 @@ class Organism:
         if decision == ROOT:
             self.root_depth += 1
             # self.energy -= self.stem_thickness * 0.1
+        elif decision == FLOWER:
+            leaves = []
+            for (x, y), part in self.parts.items():
+                if part == LEAF:
+                    leaves.append((x, y))
+            (nx, ny) = random.choice(leaves) if leaves else (None, None)
+            if nx is not None:
+                self.new_organ(nx, ny, FLOWER)
         elif decision != SEED:
             for i in range(len(parts_val)):
                 if parts_val[i] == STEM or parts_val[i] == ROOT:
@@ -221,14 +240,15 @@ class Organism:
                 self.new_organ(x,y,ROOT,0)
             return
         else:
-            self.water += self.root_depth * self.root_strength * 0.5
+            self.water += self.root_depth * self.root_strength
             grid[self.root_pos[0]][self.root_pos[1]].water -= self.root_depth * self.root_strength * 0.1
             self.energy += self.root_depth * 0.1
             grid[self.root_pos[0]][self.root_pos[1]].nutrient -= self.root_depth * 0.1
             # 기관 기능 처리
             for (x, y), organ in list(self.parts.items()):
                 if organ == STEM:
-                    pass
+                    if sun:
+                        self.photosynthesis(x,y)
                 elif organ == LEAF:
                     if sun:
                         self.photosynthesis(x,y)
@@ -275,8 +295,11 @@ class Organism:
                 adjacents.append((nx, ny))
         return adjacents
 
-def new_organism(x, y, energy=300, brain=None):
-    organisms.append(Organism(x, y, energy=energy, brain=brain))
+def new_organism(x, y, energy=300, brain=None,lw=50,rs=50,st=50,ls=20):
+    organism=Organism(x, y, energy, brain,lw,rs,st,ls)
+    if brain is not None:
+        organism.mutate()
+    organisms.append(organism)
 
 def get_organism_by_pos(x,y):
     for org in organisms:
@@ -289,7 +312,7 @@ grid = [[Cell() for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
 organisms = []
 
 # 초기 씨앗 배치
-for _ in range(50):
+for _ in range(100):
     x = random.randint(0, GRID_SIZE - 1)
     y = random.randint(0, GRID_SIZE - 1)
     if grid[x][y].organ is None:
@@ -300,8 +323,38 @@ sun=True
 
 # 메인 루프
 running = True
+speed=20
+paused=False
 while running:
-    print('개체 수: ',len(organisms))
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                paused = not paused
+            elif event.key == pygame.K_UP:
+                # 속도 증가
+                speed = min(speed + 10, 201)
+                print(speed)
+            elif event.key == pygame.K_DOWN:
+                # 속도 감소
+                speed = max(speed - 10, 1)
+                print(speed)
+
+    if paused: continue
+
+    if len(organisms) < 10:
+        for _ in range(100):
+            x = random.randint(0, GRID_SIZE - 1)
+            y = random.randint(0, GRID_SIZE - 1)
+            if grid[x][y].organ is None:
+                new_organism(x, y, 300)
+
+    # print('개체 수: ',len(organisms))
+    # print('평균 에너지: ',sum(list(map(lambda x: x.energy, organisms)))/len(organisms))
+    # print('평균 수분: ',sum(list(map(lambda x: x.water, organisms)))/len(organisms))
+    # print(sum(list(map(lambda x: x.leaf_width, organisms)))/len(organisms),sum(list(map(lambda x: x.root_strength, organisms)))/len(organisms),sum(list(map(lambda x: x.stem_thickness, organisms)))/len(organisms),sum(list(map(lambda x: x.lifespan, organisms)))/len(organisms))
+
     # time_count-=1
     if time_count<=0:
         sun=not sun
@@ -323,10 +376,14 @@ while running:
     for x in range(GRID_SIZE):
         for y in range(GRID_SIZE):
             organ = grid[x][y].organ
+
+            grid[x][y].water = 100000 # test
+            grid[x][y].nutrient = 100000 # test
+
             if organ is not None:
                 pygame.draw.rect(screen, COLORS[organ], (x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     pygame.display.flip()
-    clock.tick(20)
+    clock.tick(speed)
 
 pygame.quit()
