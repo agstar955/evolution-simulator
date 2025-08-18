@@ -9,9 +9,10 @@ pygame.init()
 
 # 기본 설정
 GRID_SIZE = 100
-CELL_SIZE = 6
-WINDOW_SIZE = GRID_SIZE * CELL_SIZE
-screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+CELL_SIZE = 12
+X = CELL_SIZE * 100
+Y = CELL_SIZE * 60
+screen = pygame.display.set_mode((X, Y))
 clock = pygame.time.Clock()
 
 # 기관 종류
@@ -253,8 +254,8 @@ class Organism:
                     if sun:
                         self.photosynthesis(x,y)
                 elif organ == FLOWER:
-                    if self.energy > 160:
-                        self.new_organ(x, y, FRUIT,150)
+                    if random.random() < 0.2:
+                        self.new_organ(x, y, FRUIT)
                 elif organ == VINE:
                     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                         nx, ny = x + dx, y + dy
@@ -308,13 +309,13 @@ def get_organism_by_pos(x,y):
     return None
 
 # 격자 초기화
-grid = [[Cell() for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+grid = [[Cell() for _ in range(Y)] for _ in range(X)]
 organisms = []
 
 # 초기 씨앗 배치
 for _ in range(100):
-    x = random.randint(0, GRID_SIZE - 1)
-    y = random.randint(0, GRID_SIZE - 1)
+    x = random.randint(0, X//CELL_SIZE - 1)
+    y = random.randint(0, Y//CELL_SIZE - 1)
     if grid[x][y].organ is None:
         new_organism(x, y, 300)
 
@@ -360,7 +361,6 @@ while running:
         sun=not sun
         time_count=100
 
-
     screen.fill((255, 255, 255) if sun else (100, 100, 100))
 
     for event in pygame.event.get():
@@ -373,8 +373,8 @@ while running:
     for org in dead:
         organisms.remove(org)
 
-    for x in range(GRID_SIZE):
-        for y in range(GRID_SIZE):
+    for x in range(X):
+        for y in range(Y):
             organ = grid[x][y].organ
 
             grid[x][y].water = 100000 # test
