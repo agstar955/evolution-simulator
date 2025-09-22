@@ -9,8 +9,8 @@ pygame.init()
 
 # 기본 설정
 CELL_SIZE = 10
-X = CELL_SIZE * 144
-Y = CELL_SIZE * 90
+X = CELL_SIZE * 80
+Y = CELL_SIZE * 60
 screen = pygame.display.set_mode((X, Y),pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 
@@ -372,8 +372,8 @@ while running:
     for org in dead:
         organisms.remove(org)
 
-    for x in range(X):
-        for y in range(Y):
+    for x in range(X//CELL_SIZE):
+        for y in range(Y//CELL_SIZE):
             organ = grid[x][y].organ
 
             grid[x][y].water = 100000 # test
