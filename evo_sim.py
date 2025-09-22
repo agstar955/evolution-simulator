@@ -8,11 +8,10 @@ import torch.nn as nn
 pygame.init()
 
 # 기본 설정
-GRID_SIZE = 100
-CELL_SIZE = 12
-X = CELL_SIZE * 100
-Y = CELL_SIZE * 60
-screen = pygame.display.set_mode((X, Y))
+CELL_SIZE = 10
+X = CELL_SIZE * 144
+Y = CELL_SIZE * 90
+screen = pygame.display.set_mode((X, Y),pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 
 # 기관 종류
@@ -61,7 +60,7 @@ class Cell:
 
 # 개체 (유기체)
 class Organism:
-    def __init__(self, x, y, energy=300, brain=None,lw=50,rs=50,st=50,ls=20):
+    def __init__(self, x, y, energy=600, brain=None,lw=50,rs=50,st=50,ls=20):
         # 상태
         self.parts = {(x, y): SEED}
         self.root_pos = (x,y)
@@ -148,7 +147,7 @@ class Organism:
         if self.age >= self.lifespan*10:
             if random.random() < 0.9 and len(self.parts)>1:
                 x, y = random.choice(list(self.parts.keys()))
-                new_organism(x,y,self.energy,self.brain,self.leaf_width,self.root_strength,self.stem_thickness,self.lifespan)
+                new_organism(x,y,600,self.brain,self.leaf_width,self.root_strength,self.stem_thickness,self.lifespan)
             self.death()
             return False
 
@@ -156,7 +155,7 @@ class Organism:
         if self.water <= 0 or self.energy <= 0:
             if random.random() < 0.6 and len(self.parts)>1:
                 x, y = random.choice(list(self.parts.keys()))
-                new_organism(x,y,300,self.brain,self.leaf_width,self.root_strength,self.stem_thickness,self.lifespan)
+                new_organism(x,y,600,self.brain,self.leaf_width,self.root_strength,self.stem_thickness,self.lifespan)
             self.death()
             return False
 
@@ -259,7 +258,7 @@ class Organism:
                 elif organ == VINE:
                     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                         nx, ny = x + dx, y + dy
-                        if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE and grid[nx][ny].organ is not None:
+                        if 0 <= nx < X//CELL_SIZE and 0 <= ny < X//CELL_SIZE and grid[nx][ny].organ is not None:
                             self.energy += self.stem_thickness * 0.1
                             get_organism_by_pos(nx,ny).energy -= self.stem_thickness * 0.1
                 elif organ == FRUIT:
@@ -278,7 +277,7 @@ class Organism:
         adjacents=[]
         for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
             nx, ny = x+dx, y+dy
-            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE and grid[nx][ny].organ is None:
+            if 0 <= nx < X//CELL_SIZE and 0 <= ny < X//CELL_SIZE and grid[nx][ny].organ is None:
                 adjacents.append((nx, ny))
         if adjacents:
             if dist==1:
@@ -292,11 +291,11 @@ class Organism:
         adjacents = []
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nx, ny = x + dx, y + dy
-            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
+            if 0 <= nx < X//CELL_SIZE and 0 <= ny < X//CELL_SIZE:
                 adjacents.append((nx, ny))
         return adjacents
 
-def new_organism(x, y, energy=300, brain=None,lw=50,rs=50,st=50,ls=20):
+def new_organism(x, y, energy=600, brain=None,lw=50,rs=50,st=50,ls=20):
     organism=Organism(x, y, energy, brain,lw,rs,st,ls)
     if brain is not None:
         organism.mutate()
@@ -317,7 +316,7 @@ for _ in range(100):
     x = random.randint(0, X//CELL_SIZE - 1)
     y = random.randint(0, Y//CELL_SIZE - 1)
     if grid[x][y].organ is None:
-        new_organism(x, y, 300)
+        new_organism(x, y, 600)
 
 time_count = 200
 sun=True
@@ -346,10 +345,10 @@ while running:
 
     if len(organisms) < 10:
         for _ in range(100):
-            x = random.randint(0, GRID_SIZE - 1)
-            y = random.randint(0, GRID_SIZE - 1)
+            x = random.randint(0, X//CELL_SIZE - 1)
+            y = random.randint(0, Y//CELL_SIZE - 1)
             if grid[x][y].organ is None:
-                new_organism(x, y, 300)
+                new_organism(x, y, 600)
 
     # print('개체 수: ',len(organisms))
     # print('평균 에너지: ',sum(list(map(lambda x: x.energy, organisms)))/len(organisms))
