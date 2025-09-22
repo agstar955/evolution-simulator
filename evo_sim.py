@@ -321,6 +321,8 @@ for _ in range(100):
 time_count = 200
 sun=True
 
+seed_cool = 2000
+
 # 메인 루프
 running = True
 speed=20
@@ -359,6 +361,15 @@ while running:
     if time_count<=0:
         sun=not sun
         time_count=100
+
+    seed_cool-=1
+    if seed_cool<=0:
+        for _ in range(100):
+            x = random.randint(0, X//CELL_SIZE - 1)
+            y = random.randint(0, Y//CELL_SIZE - 1)
+            if grid[x][y].organ is None:
+                new_organism(x, y, 600)
+        seed_cool = 1000
 
     screen.fill((255, 255, 255) if sun else (100, 100, 100))
 
