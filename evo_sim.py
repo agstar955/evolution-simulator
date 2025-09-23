@@ -143,7 +143,7 @@ class Organism:
         self.water -= self.leaf_width * len(self.parts) * 0.1
 
         # 노화
-        self.age += 1
+        # self.age += 1
         if self.age >= self.lifespan*10:
             if random.random() < 0.9 and len(self.parts)>1:
                 x, y = random.choice(list(self.parts.keys()))
